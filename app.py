@@ -4,7 +4,6 @@ import joblib
 import requests
 import os
 
-# Correct raw GitHub URL
 RAW_BASE = "https://raw.githubusercontent.com/JacobMuli/CapstoneNgao/main/"
 
 def download_file(filename):
@@ -27,12 +26,11 @@ def load_model():
     encoders = joblib.load("encoders.pkl")
     return model, encoders
 
-# App Title
 st.title("Customer Churn Prediction (XGBoost Model)")
 
 model, encoders = load_model()
 
-# ---- Dropdown options extracted from dataset ----
+# ---- Dropdown options ----
 gender_options = ["Female", "Male"]
 subscription_options = ["Standard", "Basic", "Premium"]
 contract_options = ["Annual", "Monthly", "Quarterly"]
@@ -41,7 +39,7 @@ contract_options = ["Annual", "Monthly", "Quarterly"]
 categorical_cols = [c for c in encoders.keys() if c != "Churn"]
 numeric_cols = [c for c in model.get_booster().feature_names if c not in categorical_cols]
 
-# ❗ Remove CustomerID if it somehow appears
+# Remove CustomerID if present
 if "CustomerID" in categorical_cols:
     categorical_cols.remove("CustomerID")
 if "CustomerID" in numeric_cols:
@@ -51,7 +49,7 @@ st.subheader("Enter Customer Information")
 
 inputs = {}
 
-# ---- Categorical Inputs with Dropdowns ----
+# ---- Categorical Inputs ----
 for col in categorical_cols:
     if col == "Gender":
         inputs[col] = st.selectbox("Gender", gender_options)
@@ -62,7 +60,7 @@ for col in categorical_cols:
     else:
         inputs[col] = st.text_input(col)
 
-# ---- Numeric Inputs with Units ----
+# ---- Numeric Inputs (Integers Only) ----
 label_map = {
     "Age": "Age (years)",
     "Tenure": "Tenure (months)",
@@ -75,13 +73,13 @@ label_map = {
 
 for col in numeric_cols:
     label = label_map.get(col, col)
-    inputs[col] = st.number_input(label, value=0.0)
+    inputs[col] = st.number_input(label, min_value=0, step=1)
 
-# ---- Predict Button ----
+# ---- Predict ----
 if st.button("Predict"):
     df = pd.DataFrame([inputs])
 
-    # Apply encoders to categorical fields
+    # Apply encoders
     for col, enc in encoders.items():
         if col != "Churn":
             df[col] = enc.transform(df[col].astype(str))
