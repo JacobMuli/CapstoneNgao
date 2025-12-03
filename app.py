@@ -79,11 +79,28 @@ for col in numeric_cols:
 if st.button("Predict"):
     df = pd.DataFrame([inputs])
 
-    # Apply encoders
+    # Apply encoders to categorical fields
     for col, enc in encoders.items():
         if col != "Churn":
             df[col] = enc.transform(df[col].astype(str))
 
+    # Reorder columns to EXACT model training order
+    feature_order = [
+        'Age',
+        'Gender',
+        'Tenure',
+        'Usage Frequency',
+        'Support Calls',
+        'Payment Delay',
+        'Subscription Type',
+        'Contract Length',
+        'Total Spend',
+        'Last Interaction'
+    ]
+
+    df = df[feature_order]
+
+    # Predict
     prediction = model.predict(df)[0]
     result = "Churn" if prediction == 1 else "No Churn"
 
