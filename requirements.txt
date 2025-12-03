@@ -1,6 +1,5 @@
 streamlit
 pandas
-scikit-learn
-xgboost
+numpy
 joblib
-requests
+tensorflow>=2.10
