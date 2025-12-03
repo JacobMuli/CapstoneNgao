@@ -4,7 +4,7 @@ import joblib
 import requests
 import os
 
-RAW_BASE = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/"
+RAW_BASE = "https://raw.githubusercontent.com/JacobMuli/CapstoneNgao/main/"
 
 def download_file(filename):
     url = RAW_BASE + filename
@@ -13,12 +13,13 @@ def download_file(filename):
         with open(filename, "wb") as f:
             f.write(r.content)
     else:
-        st.error(f"Failed to download {filename} from GitHub")
+        st.error(f"❌ Failed to download {filename} from GitHub. URL tried: " + url)
 
 @st.cache_resource
 def load_model():
     if not os.path.exists("model.pkl"):
         download_file("model.pkl")
+
     if not os.path.exists("encoders.pkl"):
         download_file("encoders.pkl")
 
@@ -50,7 +51,7 @@ for col in numeric_cols:
 if st.button("Predict"):
     df = pd.DataFrame([inputs])
 
-    # Apply encoders
+    # Apply encoders to categorical fields
     for col, enc in encoders.items():
         if col != "Churn":
             df[col] = enc.transform(df[col].astype(str))
@@ -59,4 +60,3 @@ if st.button("Predict"):
     result = "Churn" if prediction == 1 else "No Churn"
 
     st.success(f"Prediction: **{result}**")
-
