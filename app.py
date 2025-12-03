@@ -7,6 +7,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from io import StringIO
 import joblib
 import tensorflow as tf
 import json
@@ -331,6 +332,7 @@ if st.button("Predict from JSON"):
             st.text(traceback.format_exc())
 
 # Option B — CSV row
+# Option B — CSV row
 st.subheader("Option B — Paste CSV (single row) or comma-separated features")
 csv_text = st.text_area("Or paste a CSV row (header optional)", value="", height=120)
 if st.button("Predict from CSV row"):
@@ -340,6 +342,10 @@ if st.button("Predict from CSV row"):
         else:
             from io import StringIO
             df_try = pd.read_csv(StringIO(csv_text))
+            df_try.columns = df_try.columns.str.strip()
+            df_try.columns = df_try.columns.str.replace("\ufeff", "", regex=True)  # remove BOM
+            df_try.columns = df_try.columns.str.strip()
+            df_try.columns = df_try.columns.str.replace(" +", " ", regex=True)
             if df_try.shape[0] > 1:
                 df_try = df_try.head(1)
             proba, pred, label, borderline = predict_from_df(df_try)
