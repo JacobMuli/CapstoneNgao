@@ -4,6 +4,9 @@ import joblib
 import requests
 import os
 
+# =========================================================
+#  GitHub RAW base URL for downloading model + encoders
+# =========================================================
 RAW_BASE = "https://raw.githubusercontent.com/JacobMuli/CapstoneNgao/main/"
 
 def download_file(filename):
@@ -13,7 +16,7 @@ def download_file(filename):
         with open(filename, "wb") as f:
             f.write(r.content)
     else:
-        st.error(f"Failed to download: {filename}")
+        st.error(f"Failed to download: {filename}. Check URL: {url}")
 
 @st.cache_resource
 def load_model():
@@ -26,41 +29,52 @@ def load_model():
     encoders = joblib.load("encoders.pkl")
     return model, encoders
 
+# =========================================================
+#  Streamlit App
+# =========================================================
 st.title("Customer Churn Prediction (XGBoost Model)")
 
 model, encoders = load_model()
 
-# ---- Dropdown options ----
+# --------------------------
+# FIXED CATEGORY OPTIONS
+# --------------------------
 gender_options = ["Female", "Male"]
 subscription_options = ["Standard", "Basic", "Premium"]
 contract_options = ["Annual", "Monthly", "Quarterly"]
 
-# ---- Identify model feature columns ----
-categorical_cols = [c for c in encoders.keys() if c != "Churn"]
-numeric_cols = [c for c in model.get_booster().feature_names if c not in categorical_cols]
+# --------------------------
+# FIXED FEATURE LISTS
+# --------------------------
+categorical_cols = [
+    "Gender",
+    "Subscription Type",
+    "Contract Length"
+]
 
-# Remove CustomerID if present
-if "CustomerID" in categorical_cols:
-    categorical_cols.remove("CustomerID")
-if "CustomerID" in numeric_cols:
-    numeric_cols.remove("CustomerID")
+numeric_cols = [
+    "Age",
+    "Tenure",
+    "Usage Frequency",
+    "Support Calls",
+    "Payment Delay",
+    "Total Spend",
+    "Last Interaction"
+]
 
+# --------------------------
+# USER INPUT UI
+# --------------------------
 st.subheader("Enter Customer Information")
 
 inputs = {}
 
-# ---- Categorical Inputs ----
-for col in categorical_cols:
-    if col == "Gender":
-        inputs[col] = st.selectbox("Gender", gender_options)
-    elif col == "Subscription Type":
-        inputs[col] = st.selectbox("Subscription Type", subscription_options)
-    elif col == "Contract Length":
-        inputs[col] = st.selectbox("Contract Length", contract_options)
-    else:
-        inputs[col] = st.text_input(col)
+# Categorical Inputs
+inputs["Gender"] = st.selectbox("Gender", gender_options)
+inputs["Subscription Type"] = st.selectbox("Subscription Type", subscription_options)
+inputs["Contract Length"] = st.selectbox("Contract Length", contract_options)
 
-# ---- Numeric Inputs (Integers Only) ----
+# Numeric Inputs (Integers Only)
 label_map = {
     "Age": "Age (years)",
     "Tenure": "Tenure (months)",
@@ -72,19 +86,25 @@ label_map = {
 }
 
 for col in numeric_cols:
-    label = label_map.get(col, col)
-    inputs[col] = st.number_input(label, min_value=0, step=1)
+    inputs[col] = st.number_input(label_map[col], min_value=0, step=1)
 
-# ---- Predict ----
+# --------------------------
+# PREDICT
+# --------------------------
 if st.button("Predict"):
+
     df = pd.DataFrame([inputs])
 
-    # Apply encoders to categorical fields
+    # Apply encoders
     for col, enc in encoders.items():
         if col != "Churn":
             df[col] = enc.transform(df[col].astype(str))
 
-    # Reorder columns to EXACT model training order
+    # Ensure numeric columns are int (to match training)
+    for col in numeric_cols:
+        df[col] = df[col].astype(int)
+
+    # Reorder EXACTLY as model expects
     feature_order = [
         'Age',
         'Gender',
