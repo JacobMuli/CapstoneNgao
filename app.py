@@ -4,9 +4,6 @@ import joblib
 import requests
 import os
 
-# =========================================================
-#  GitHub RAW base URL for downloading model + encoders
-# =========================================================
 RAW_BASE = "https://raw.githubusercontent.com/JacobMuli/CapstoneNgao/main/"
 
 def download_file(filename):
@@ -16,7 +13,7 @@ def download_file(filename):
         with open(filename, "wb") as f:
             f.write(r.content)
     else:
-        st.error(f"Failed to download: {filename}. Check URL: {url}")
+        st.error(f"Failed to download {filename}")
 
 @st.cache_resource
 def load_model():
@@ -24,34 +21,17 @@ def load_model():
         download_file("model.pkl")
     if not os.path.exists("encoders.pkl"):
         download_file("encoders.pkl")
-
     model = joblib.load("model.pkl")
     encoders = joblib.load("encoders.pkl")
     return model, encoders
 
-# =========================================================
-#  Streamlit App
-# =========================================================
-st.title("Customer Churn Prediction (XGBoost Model)")
+# ---------------------------------------------------
+
+st.title("Customer Churn Prediction (Random Forest Model)")
 
 model, encoders = load_model()
 
-# --------------------------
-# FIXED CATEGORY OPTIONS
-# --------------------------
-gender_options = ["Female", "Male"]
-subscription_options = ["Standard", "Basic", "Premium"]
-contract_options = ["Annual", "Monthly", "Quarterly"]
-
-# --------------------------
-# FIXED FEATURE LISTS
-# --------------------------
-categorical_cols = [
-    "Gender",
-    "Subscription Type",
-    "Contract Length"
-]
-
+categorical_cols = ["Gender", "Subscription Type", "Contract Length"]
 numeric_cols = [
     "Age",
     "Tenure",
@@ -62,19 +42,21 @@ numeric_cols = [
     "Last Interaction"
 ]
 
-# --------------------------
-# USER INPUT UI
-# --------------------------
-st.subheader("Enter Customer Information")
+# Dropdown options
+gender_options = ["Female", "Male"]
+subscription_options = ["Standard", "Basic", "Premium"]
+contract_options = ["Annual", "Monthly", "Quarterly"]
 
 inputs = {}
 
-# Categorical Inputs
+st.subheader("Enter Customer Information")
+
+# Categorical UI
 inputs["Gender"] = st.selectbox("Gender", gender_options)
 inputs["Subscription Type"] = st.selectbox("Subscription Type", subscription_options)
 inputs["Contract Length"] = st.selectbox("Contract Length", contract_options)
 
-# Numeric Inputs (Integers Only)
+# Numeric UI (integer only)
 label_map = {
     "Age": "Age (years)",
     "Tenure": "Tenure (months)",
@@ -88,40 +70,17 @@ label_map = {
 for col in numeric_cols:
     inputs[col] = st.number_input(label_map[col], min_value=0, step=1)
 
-# --------------------------
-# PREDICT
-# --------------------------
+# Prediction
 if st.button("Predict"):
 
     df = pd.DataFrame([inputs])
 
-    # Apply encoders
-    for col, enc in encoders.items():
-        if col != "Churn":
-            df[col] = enc.transform(df[col].astype(str))
+    # Encode categoricals
+    for col in categorical_cols:
+        df[col] = encoders[col].transform(df[col].astype(str))
 
-    # Ensure numeric columns are int (to match training)
-    for col in numeric_cols:
-        df[col] = df[col].astype(int)
-
-    # Reorder EXACTLY as model expects
-    feature_order = [
-        'Age',
-        'Gender',
-        'Tenure',
-        'Usage Frequency',
-        'Support Calls',
-        'Payment Delay',
-        'Subscription Type',
-        'Contract Length',
-        'Total Spend',
-        'Last Interaction'
-    ]
-
-    df = df[feature_order]
-
-    # Predict
     prediction = model.predict(df)[0]
     result = "Churn" if prediction == 1 else "No Churn"
 
     st.success(f"Prediction: **{result}**")
+
