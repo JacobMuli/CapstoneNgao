@@ -5,7 +5,7 @@ import requests
 import os
 
 # Correct raw GitHub URL
-RAW_BASE = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/"
+RAW_BASE = "https://raw.githubusercontent.com/JacobMuli/CapstoneNgao/main/"
 
 def download_file(filename):
     url = RAW_BASE + filename
