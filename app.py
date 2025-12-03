@@ -4,7 +4,8 @@ import joblib
 import requests
 import os
 
-RAW_BASE = "https://raw.githubusercontent.com/JacobMuli/CapstoneNgao/main/"
+# Correct raw GitHub URL
+RAW_BASE = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/"
 
 def download_file(filename):
     url = RAW_BASE + filename
@@ -13,7 +14,7 @@ def download_file(filename):
         with open(filename, "wb") as f:
             f.write(r.content)
     else:
-        st.error(f"Failed to download {filename} from GitHub")
+        st.error(f"Failed to download: {filename}")
 
 @st.cache_resource
 def load_model():
@@ -26,17 +27,25 @@ def load_model():
     encoders = joblib.load("encoders.pkl")
     return model, encoders
 
+# App Title
 st.title("Customer Churn Prediction (XGBoost Model)")
+
 model, encoders = load_model()
 
-# ---- Dropdown options (from your dataset) ----
+# ---- Dropdown options extracted from dataset ----
 gender_options = ["Female", "Male"]
 subscription_options = ["Standard", "Basic", "Premium"]
 contract_options = ["Annual", "Monthly", "Quarterly"]
 
-# ---- Identify feature columns ----
+# ---- Identify model feature columns ----
 categorical_cols = [c for c in encoders.keys() if c != "Churn"]
 numeric_cols = [c for c in model.get_booster().feature_names if c not in categorical_cols]
+
+# ❗ Remove CustomerID if it somehow appears
+if "CustomerID" in categorical_cols:
+    categorical_cols.remove("CustomerID")
+if "CustomerID" in numeric_cols:
+    numeric_cols.remove("CustomerID")
 
 st.subheader("Enter Customer Information")
 
@@ -51,8 +60,7 @@ for col in categorical_cols:
     elif col == "Contract Length":
         inputs[col] = st.selectbox("Contract Length", contract_options)
     else:
-        # Fallback for any other categorical fields
-        inputs[col] = st.text_input(col, "")
+        inputs[col] = st.text_input(col)
 
 # ---- Numeric Inputs with Units ----
 label_map = {
@@ -73,7 +81,7 @@ for col in numeric_cols:
 if st.button("Predict"):
     df = pd.DataFrame([inputs])
 
-    # Apply label encoders for categorical fields
+    # Apply encoders to categorical fields
     for col, enc in encoders.items():
         if col != "Churn":
             df[col] = enc.transform(df[col].astype(str))
