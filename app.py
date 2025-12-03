@@ -11,6 +11,7 @@ import joblib
 import tensorflow as tf
 import json
 import traceback
+import ast
 
 st.set_page_config(page_title="Churn Prediction — Stable NN", layout="wide")
 
@@ -42,6 +43,27 @@ def safe_title_cat(s):
         return str(s).strip().title()
     except Exception:
         return str(s).strip()
+
+def safe_parse_json(text):
+    """
+    Tolerant parser: accepts valid JSON or Python dict notation.
+    Returns a Python object (dict/list/etc) or raises an exception on failure.
+    """
+    text = text.strip()
+    if not text:
+        raise ValueError("Empty input")
+    # If it looks like a Python dict (single quotes) try ast.literal_eval first
+    try:
+        # heuristic: starts with "{" and contains single quotes but not double quotes
+        if text.startswith("{") and ("'" in text and '"' not in text):
+            parsed_py = ast.literal_eval(text)
+            # convert to JSON-serializable structure via json.dumps/load
+            return json.loads(json.dumps(parsed_py))
+    except Exception:
+        # fall through to json.loads
+        pass
+    # Try json.loads (normal JSON)
+    return json.loads(text)
 
 # Sidebar snapshot for debugging
 st.sidebar.markdown("### Files in candidate folders (debug)")
@@ -285,18 +307,17 @@ if st.button("Predict from JSON"):
         if not input_json.strip():
             st.warning("Please paste a JSON object for a single row.")
         else:
-            # tolerate both JSON object and JSON string
+            # tolerant parsing (accept Python dict notation too)
             try:
-                row = pd.read_json(input_json, typ='series')
-                df = pd.DataFrame([row])
-            except ValueError:
-                # maybe it's a JSON string for an object
-                parsed = json.loads(input_json)
+                parsed = safe_parse_json(input_json)
                 if isinstance(parsed, dict):
                     df = pd.DataFrame([parsed])
                 else:
                     st.error("JSON must represent a single object (dict).")
                     df = None
+            except Exception as pe:
+                st.error(f"JSON parse error: {pe}")
+                df = None
 
             if df is not None:
                 proba, pred, label, borderline = predict_from_df(df)
